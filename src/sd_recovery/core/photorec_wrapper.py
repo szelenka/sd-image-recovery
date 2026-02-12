@@ -106,13 +106,14 @@ class PhotoRecWrapper:
         # Start search
         options.append('search')
 
-        # Build command with options combined into single comma-separated argument
+        # Build command with each option as a separate argument
         cmd = [
             self.photorec_path,
             '/d', str(output_dir),  # Output directory
-            '/cmd', device_path,     # Device or image file
-            ','.join(options)        # All options as single comma-separated string
+            '/cmd', device_path      # Device or image file
         ]
+        # Add each option as a separate argument (not comma-separated)
+        cmd.extend(options)
 
         return cmd
 

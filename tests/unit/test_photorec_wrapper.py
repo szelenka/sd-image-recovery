@@ -35,8 +35,8 @@ class TestPhotoRecWrapper:
         assert str(temp_dir) in cmd
         assert '/cmd' in cmd
         assert '/dev/disk2' in cmd
-        # Check that 'search' is in the combined options string
-        assert any('search' in str(item) for item in cmd)
+        # Check that 'search' is in the command arguments
+        assert 'search' in cmd
 
     def test_build_command_with_paranoid(self, temp_dir):
         wrapper = PhotoRecWrapper(photorec_path='/usr/local/bin/photorec')
@@ -47,8 +47,8 @@ class TestPhotoRecWrapper:
             paranoid=True
         )
 
-        # Check that 'options,paranoid' is in the combined options string
-        assert any('options,paranoid' in str(item) for item in cmd)
+        # Check that 'options,paranoid' is in the command arguments
+        assert 'options,paranoid' in cmd
 
     def test_build_command_with_file_types(self, temp_dir):
         wrapper = PhotoRecWrapper(photorec_path='/usr/local/bin/photorec')
@@ -60,8 +60,8 @@ class TestPhotoRecWrapper:
         )
 
         # Check that jpg and png are enabled
-        assert any('fileopt,jpg,enable' in str(item) for item in cmd)
-        assert any('fileopt,png,enable' in str(item) for item in cmd)
+        assert 'fileopt,jpg,enable' in cmd
+        assert 'fileopt,png,enable' in cmd
 
     @patch('sd_recovery.core.photorec_wrapper.subprocess.Popen')
     def test_execute_success(self, mock_popen, temp_dir):
