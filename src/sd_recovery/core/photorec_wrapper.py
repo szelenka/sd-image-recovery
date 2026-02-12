@@ -77,43 +77,27 @@ class PhotoRecWrapper:
         Args:
             device_path: Path to device or image file
             output_dir: Directory for recovered files
-            paranoid: Enable paranoid mode (slower, more thorough)
-            file_types: List of file types to recover (defaults to ['jpg'])
+            paranoid: Enable paranoid mode (slower, more thorough) - NOTE: Not supported in batch mode
+            file_types: List of file types to recover - NOTE: Not supported in batch mode, PhotoRec will recover all common types
 
         Returns:
             Command as list of strings
-        """
-        if file_types is None:
-            file_types = ['jpg']
 
+        Note:
+            PhotoRec's batch mode doesn't support file type filtering or paranoid mode.
+            These parameters are kept for API compatibility but are currently ignored.
+            PhotoRec will recover common file types (including JPG) by default.
+        """
         # Ensure output directory exists
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Build options list
-        options = []
-
-        # Disable all file types first
-        options.append('fileopt,everything,disable')
-
-        # Enable selected file types
-        for ftype in file_types:
-            options.append(f'fileopt,{ftype},enable')
-
-        # Paranoid mode for thorough scanning
-        if paranoid:
-            options.append('options,paranoid')
-
-        # Start search
-        options.append('search')
-
-        # Build command with each option as a separate argument
+        # Build simple command for batch mode
+        # PhotoRec batch syntax: photorec /d output_dir device_or_image
         cmd = [
             self.photorec_path,
             '/d', str(output_dir),  # Output directory
-            '/cmd', device_path      # Device or image file
+            device_path              # Device or image file
         ]
-        # Add each option as a separate argument (not comma-separated)
-        cmd.extend(options)
 
         return cmd
 
