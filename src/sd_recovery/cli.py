@@ -103,7 +103,7 @@ def devices(ctx):
         sys.exit(1)
 
 
-@main.command()
+@main.command('recover')
 @click.argument('device', type=str)
 @click.option(
     '--output', '-o',
@@ -126,7 +126,7 @@ def devices(ctx):
     help='Skip confirmation and safety checks (dangerous - use with caution)'
 )
 @click.pass_context
-def recover(ctx, device, output, paranoid, no_validate, force):
+def recover_cmd(ctx, device, output, paranoid, no_validate, force):
     """Recover deleted images from a device or disk image.
 
     DEVICE can be either:
