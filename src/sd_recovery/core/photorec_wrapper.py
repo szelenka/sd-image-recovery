@@ -89,30 +89,30 @@ class PhotoRecWrapper:
         # Ensure output directory exists
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Build command
+        # Build options list
+        options = []
+
+        # Disable all file types first
+        options.append('fileopt,everything,disable')
+
+        # Enable selected file types
+        for ftype in file_types:
+            options.append(f'fileopt,{ftype},enable')
+
+        # Paranoid mode for thorough scanning
+        if paranoid:
+            options.append('options,paranoid')
+
+        # Start search
+        options.append('search')
+
+        # Build command with options combined into single comma-separated argument
         cmd = [
             self.photorec_path,
             '/d', str(output_dir),  # Output directory
             '/cmd', device_path,     # Device or image file
+            ','.join(options)        # All options as single comma-separated string
         ]
-
-        # Add file type options
-        for ftype in file_types:
-            cmd.append(f'fileopt,{ftype},enable')
-
-        # Disable all other file types
-        cmd.append('fileopt,everything,disable')
-
-        # Enable selected file types
-        for ftype in file_types:
-            cmd.append(f'fileopt,{ftype},enable')
-
-        # Paranoid mode for thorough scanning
-        if paranoid:
-            cmd.append('options,paranoid')
-
-        # Start search
-        cmd.append('search')
 
         return cmd
 

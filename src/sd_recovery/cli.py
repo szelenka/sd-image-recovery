@@ -126,7 +126,7 @@ def devices(ctx):
     help='Skip confirmation and safety checks (dangerous - use with caution)'
 )
 @click.pass_context
-def recover_cmd(ctx, device, output, paranoid, no_validate, force):
+def recover(ctx, device, output, paranoid, no_validate, force):
     """Recover deleted images from a device or disk image.
 
     DEVICE can be either:
