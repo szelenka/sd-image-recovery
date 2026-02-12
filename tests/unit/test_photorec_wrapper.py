@@ -35,7 +35,8 @@ class TestPhotoRecWrapper:
         assert str(temp_dir) in cmd
         assert '/cmd' in cmd
         assert '/dev/disk2' in cmd
-        assert 'search' in cmd
+        # Check that 'search' is in the combined options string
+        assert any('search' in str(item) for item in cmd)
 
     def test_build_command_with_paranoid(self, temp_dir):
         wrapper = PhotoRecWrapper(photorec_path='/usr/local/bin/photorec')
@@ -46,7 +47,8 @@ class TestPhotoRecWrapper:
             paranoid=True
         )
 
-        assert 'options,paranoid' in cmd
+        # Check that 'options,paranoid' is in the combined options string
+        assert any('options,paranoid' in str(item) for item in cmd)
 
     def test_build_command_with_file_types(self, temp_dir):
         wrapper = PhotoRecWrapper(photorec_path='/usr/local/bin/photorec')
