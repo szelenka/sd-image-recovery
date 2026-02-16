@@ -21,8 +21,8 @@ def test_disk_image(temp_dir):
     # Create some test JPEGs
     for i in range(3):
         img_path = image_dir / f"photo_{i}.jpg"
-        img = Image.new('RGB', (640, 480), color='blue')
-        img.save(img_path, 'JPEG')
+        img = Image.new("RGB", (640, 480), color="blue")
+        img.save(img_path, "JPEG")
 
     return image_dir
 
@@ -39,7 +39,7 @@ class TestRecoveryFlow:
             device_path=str(test_disk_image),
             output_dir=output_dir,
             paranoid=False,
-            validate=True
+            validate=True,
         )
 
         # Run with force to skip confirmation
@@ -58,7 +58,7 @@ class TestRecoveryFlow:
             device_path="/dev/disk99",
             output_dir=temp_dir / "output",
             paranoid=True,
-            validate=True
+            validate=True,
         )
 
         assert session.device_path == "/dev/disk99"
@@ -69,9 +69,7 @@ class TestRecoveryFlow:
     def test_recovery_session_auto_output_dir(self):
         """Test recovery session with auto-generated output directory."""
         session = RecoverySession(
-            device_path="/dev/disk99",
-            paranoid=False,
-            validate=True
+            device_path="/dev/disk99", paranoid=False, validate=True
         )
 
         assert session.output_dir is not None
@@ -93,9 +91,7 @@ class TestRecoveryFlow:
         output_dir = temp_dir / "recovered"
 
         session = RecoverySession(
-            device_path=str(test_image_path),
-            output_dir=output_dir,
-            validate=True
+            device_path=str(test_image_path), output_dir=output_dir, validate=True
         )
 
         success = session.run(skip_confirmation=True)

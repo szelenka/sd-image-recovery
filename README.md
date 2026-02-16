@@ -72,7 +72,7 @@ This will show all connected storage devices with safety information:
 Available Devices:
 ================================================================================
 
-✓ /dev/disk2
+✓ /dev/disk4
    Size: 32.0 GB
    Volume: SD_CARD
    Filesystem: FAT32
@@ -91,13 +91,13 @@ Available Devices:
 
 ```bash
 # Basic recovery
-sudo sd-recovery recover /dev/disk2 --output ./recovered
+sudo sd-recovery recover /dev/disk4 --output ./recovered
 
 # With paranoid mode (slower but more thorough)
-sudo sd-recovery recover /dev/disk2 --output ./recovered --paranoid
+sudo sd-recovery recover /dev/disk4 --output ./recovered --paranoid
 
 # Skip validation (faster)
-sudo sd-recovery recover /dev/disk2 --output ./recovered --no-validate
+sudo sd-recovery recover /dev/disk4 --output ./recovered --no-validate
 ```
 
 ### Recover from Disk Image
@@ -107,6 +107,32 @@ For testing or working with disk image backups:
 ```bash
 sd-recovery recover path/to/image.img --output ./recovered
 ```
+
+## Manual Recovery with PhotoRec
+
+PhotoRec cannot be fully automated for partition selection. To recover images:
+
+1. Run PhotoRec manually and select the correct partition when prompted:
+
+```bash
+sudo photorec /d ./recovered /dev/rdisk4
+```
+- Use the arrow keys to select the partition containing your lost files.
+- Choose the filesystem type and output directory as prompted.
+- Let PhotoRec complete the recovery process.
+
+2. After recovery, use the provided CLI tools to organize your images by resolution:
+
+### Group Images by Resolution
+
+To move all recovered images into folders by their resolution:
+
+```bash
+sudo sd-recovery group --grouped-dir ./grouped --rename-prefix PICT ./recovered
+```
+- This will move all images from all `recovered*` peer folders under `/path/to/parent` into subfolders like `./grouped/4032x3024/`, `./grouped/1920x1080/`, etc.
+
+See `sd-recovery group --help` for more options.
 
 ## Safety Features
 
@@ -199,11 +225,11 @@ diff tests/fixtures/checksums_original.txt test_recovered/*/metadata/checksums_r
 **WARNING**: This will format the SD card and destroy all data!
 
 ```bash
-# Prepare test SD card (replace disk2 with your SD card)
-bash scripts/create_test_sd.sh /dev/disk2
+# Prepare test SD card (replace disk4 with your SD card)
+bash scripts/create_test_sd.sh /dev/disk4
 
 # Run recovery
-sudo sd-recovery recover /dev/disk2 --output ./test_recovered
+sudo sd-recovery recover /dev/disk4 --output ./test_recovered
 
 # Verify checksums
 cd test_recovered/*/images
@@ -212,32 +238,6 @@ diff checksums_recovered.txt ../../../scripts/checksums_original.txt
 ```
 
 ## Development
-
-### Project Structure
-
-```
-sd-image-recovery/
-├── src/sd_recovery/
-│   ├── core/
-│   │   ├── device.py          # Device detection and safety
-│   │   ├── photorec_wrapper.py # PhotoRec integration
-│   │   ├── recovery.py        # Main orchestration
-│   │   └── organizer.py       # Output organization
-│   │
-│   ├── utils/
-│   │   ├── errors.py          # Custom exceptions
-│   │   ├── progress.py        # Progress tracking
-│   │   └── validation.py     # File validation
-│   │
-│   └── cli.py                 # CLI interface
-│
-├── tests/
-│   ├── unit/                  # Unit tests
-│   ├── integration/           # Integration tests
-│   └── fixtures/              # Test fixtures
-│
-└── scripts/                   # Helper scripts
-```
 
 ### Running Tests
 
@@ -282,7 +282,7 @@ photorec /version
 Raw device access requires sudo:
 
 ```bash
-sudo sd-recovery recover /dev/disk2
+sudo sd-recovery recover /dev/disk4
 ```
 
 ### Device Not Recognized
@@ -294,7 +294,7 @@ Check device path:
 diskutil list
 
 # Get device info
-diskutil info /dev/disk2
+diskutil info /dev/disk4
 ```
 
 ### No Files Recovered

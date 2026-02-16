@@ -5,7 +5,7 @@ import csv
 import shutil
 import logging
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Optional
 from datetime import datetime
 from dataclasses import dataclass, asdict
 
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RecoveredFile:
     """Information about a recovered file."""
+
     original_path: str
     new_path: str
     new_filename: str
@@ -53,14 +54,12 @@ class RecoveryOrganizer:
             self.images_dir,
             self.metadata_dir,
             self.valid_dir,
-            self.suspicious_dir
+            self.suspicious_dir,
         ]:
             directory.mkdir(parents=True, exist_ok=True)
 
     def organize(
-        self,
-        source_files: List[Path],
-        validate_files: bool = True
+        self, source_files: List[Path], validate_files: bool = True
     ) -> List[RecoveredFile]:
         """Organize recovered files.
 
@@ -75,13 +74,13 @@ class RecoveryOrganizer:
 
         recovered_files = []
 
-        with ProgressTracker(total=len(source_files), desc="Organizing files") as progress:
+        with ProgressTracker(
+            total=len(source_files), desc="Organizing files"
+        ) as progress:
             for idx, source_file in enumerate(source_files, start=1):
                 try:
                     recovered = self._process_file(
-                        source_file,
-                        idx,
-                        validate=validate_files
+                        source_file, idx, validate=validate_files
                     )
                     if recovered:
                         recovered_files.append(recovered)
@@ -100,10 +99,7 @@ class RecoveryOrganizer:
         return recovered_files
 
     def _process_file(
-        self,
-        source_file: Path,
-        index: int,
-        validate: bool = True
+        self, source_file: Path, index: int, validate: bool = True
     ) -> Optional[RecoveredFile]:
         """Process a single file.
 
@@ -151,12 +147,12 @@ class RecoveryOrganizer:
 
         # Extract metadata
         if metadata:
-            recovered.width = metadata.get('width')
-            recovered.height = metadata.get('height')
-            recovered.has_exif = metadata.get('has_exif', False)
-            recovered.camera_make = metadata.get('camera_make')
-            recovered.camera_model = metadata.get('camera_model')
-            recovered.datetime = metadata.get('datetime')
+            recovered.width = metadata.get("width")
+            recovered.height = metadata.get("height")
+            recovered.has_exif = metadata.get("has_exif", False)
+            recovered.camera_make = metadata.get("camera_make")
+            recovered.camera_model = metadata.get("camera_model")
+            recovered.datetime = metadata.get("datetime")
 
         # Create symlinks for categorization
         self._create_symlinks(recovered)
@@ -194,14 +190,14 @@ class RecoveryOrganizer:
         manifest_path = self.metadata_dir / "manifest.json"
 
         manifest = {
-            'recovery_date': datetime.now().isoformat(),
-            'total_files': len(recovered_files),
-            'valid_files': sum(1 for f in recovered_files if f.is_valid),
-            'suspicious_files': sum(1 for f in recovered_files if f.is_suspicious),
-            'files': [asdict(f) for f in recovered_files]
+            "recovery_date": datetime.now().isoformat(),
+            "total_files": len(recovered_files),
+            "valid_files": sum(1 for f in recovered_files if f.is_valid),
+            "suspicious_files": sum(1 for f in recovered_files if f.is_suspicious),
+            "files": [asdict(f) for f in recovered_files],
         }
 
-        with open(manifest_path, 'w') as f:
+        with open(manifest_path, "w") as f:
             json.dump(manifest, f, indent=2)
 
         logger.info(f"Manifest written to {manifest_path}")
@@ -214,41 +210,45 @@ class RecoveryOrganizer:
         """
         csv_path = self.metadata_dir / "file_details.csv"
 
-        with open(csv_path, 'w', newline='') as f:
+        with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
 
             # Header
-            writer.writerow([
-                'filename',
-                'size_bytes',
-                'size_human',
-                'is_valid',
-                'is_suspicious',
-                'width',
-                'height',
-                'has_exif',
-                'camera_make',
-                'camera_model',
-                'datetime',
-                'path'
-            ])
+            writer.writerow(
+                [
+                    "filename",
+                    "size_bytes",
+                    "size_human",
+                    "is_valid",
+                    "is_suspicious",
+                    "width",
+                    "height",
+                    "has_exif",
+                    "camera_make",
+                    "camera_model",
+                    "datetime",
+                    "path",
+                ]
+            )
 
             # Data rows
             for recovered in recovered_files:
-                writer.writerow([
-                    recovered.new_filename,
-                    recovered.size_bytes,
-                    format_size(recovered.size_bytes),
-                    recovered.is_valid,
-                    recovered.is_suspicious,
-                    recovered.width or '',
-                    recovered.height or '',
-                    recovered.has_exif,
-                    recovered.camera_make or '',
-                    recovered.camera_model or '',
-                    recovered.datetime or '',
-                    recovered.new_path
-                ])
+                writer.writerow(
+                    [
+                        recovered.new_filename,
+                        recovered.size_bytes,
+                        format_size(recovered.size_bytes),
+                        recovered.is_valid,
+                        recovered.is_suspicious,
+                        recovered.width or "",
+                        recovered.height or "",
+                        recovered.has_exif,
+                        recovered.camera_make or "",
+                        recovered.camera_model or "",
+                        recovered.datetime or "",
+                        recovered.new_path,
+                    ]
+                )
 
         logger.info(f"CSV written to {csv_path}")
 
@@ -266,11 +266,13 @@ class RecoveryOrganizer:
 
         total_size = sum(f.size_bytes for f in recovered_files)
 
-        with open(log_path, 'w') as f:
+        with open(log_path, "w") as f:
             f.write("SD Card Image Recovery - Summary Report\n")
             f.write("=" * 60 + "\n\n")
 
-            f.write(f"Recovery Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(
+                f"Recovery Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            )
 
             f.write("Statistics:\n")
             f.write(f"  Total files recovered: {len(recovered_files)}\n")
@@ -312,7 +314,7 @@ class RecoveryOrganizer:
         logger.info(f"Cleaning up source directory: {source_dir}")
 
         # Remove recup_dir.* directories
-        for recup_dir in source_dir.glob('recup_dir.*'):
+        for recup_dir in source_dir.glob("recup_dir.*"):
             if recup_dir.is_dir():
                 try:
                     shutil.rmtree(recup_dir)

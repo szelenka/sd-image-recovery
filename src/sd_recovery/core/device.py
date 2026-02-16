@@ -4,14 +4,10 @@ import subprocess
 import re
 import logging
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Optional
 from dataclasses import dataclass
 
-from ..utils.errors import (
-    DeviceNotFoundError,
-    UnsafeDeviceError,
-    MountError,
-)
+from ..utils.errors import DeviceNotFoundError, UnsafeDeviceError, MountError
 from ..utils.validation import format_size
 
 logger = logging.getLogger(__name__)
@@ -20,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DeviceInfo:
     """Information about a storage device."""
+
     device_path: str
     raw_device_path: str
     size_bytes: int
@@ -43,10 +40,7 @@ def get_all_devices() -> List[DeviceInfo]:
     """
     try:
         result = subprocess.run(
-            ['diskutil', 'list', '-plist'],
-            capture_output=True,
-            text=True,
-            check=True
+            ["diskutil", "list", "-plist"], capture_output=True, text=True, check=True
         )
 
         # Parse diskutil output to get device list
@@ -54,14 +48,11 @@ def get_all_devices() -> List[DeviceInfo]:
 
         # Get simple list first
         result_simple = subprocess.run(
-            ['diskutil', 'list'],
-            capture_output=True,
-            text=True,
-            check=True
+            ["diskutil", "list"], capture_output=True, text=True, check=True
         )
 
         # Parse each disk device
-        disk_pattern = re.compile(r'/dev/(disk\d+)')
+        disk_pattern = re.compile(r"/dev/(disk\d+)")
         for match in disk_pattern.finditer(result_simple.stdout):
             device = match.group(1)
             try:
@@ -94,43 +85,43 @@ def get_device_info(device_path: str) -> DeviceInfo:
     try:
         # Get device information from diskutil
         result = subprocess.run(
-            ['diskutil', 'info', device_path],
+            ["diskutil", "info", device_path],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
 
         info = {}
-        for line in result.stdout.split('\n'):
-            if ':' in line:
-                key, value = line.split(':', 1)
+        for line in result.stdout.split("\n"):
+            if ":" in line:
+                key, value = line.split(":", 1)
                 info[key.strip()] = value.strip()
 
         # Extract device number (e.g., 2 from /dev/disk2)
-        device_match = re.search(r'disk(\d+)', device_path)
+        device_match = re.search(r"disk(\d+)", device_path)
         device_number = int(device_match.group(1)) if device_match else -1
 
         # Determine if device is internal or removable
-        is_internal = info.get('Device Location', '').lower() == 'internal'
-        is_removable = info.get('Removable Media', '').lower() == 'removable'
-        protocol = info.get('Protocol', '').lower()
+        is_internal = info.get("Device Location", "").lower() == "internal"
+        is_removable = info.get("Removable Media", "").lower() == "removable"
+        protocol = info.get("Protocol", "").lower()
 
         # USB devices are considered removable
-        if 'usb' in protocol:
+        if "usb" in protocol:
             is_removable = True
             is_internal = False
 
         # Parse size
-        size_str = info.get('Disk Size', '0 B')
+        size_str = info.get("Disk Size", "0 B")
         size_bytes = parse_size(size_str)
 
         # Get filesystem and mount point
-        filesystem = info.get('File System Personality') or info.get('Type (Bundle)')
-        mount_point = info.get('Mount Point')
-        volume_name = info.get('Volume Name')
+        filesystem = info.get("File System Personality") or info.get("Type (Bundle)")
+        mount_point = info.get("Mount Point")
+        volume_name = info.get("Volume Name")
 
         # Convert to raw device path if needed
-        raw_device_path = device_path.replace('/dev/disk', '/dev/rdisk')
+        raw_device_path = device_path.replace("/dev/disk", "/dev/rdisk")
 
         return DeviceInfo(
             device_path=device_path,
@@ -151,7 +142,9 @@ def get_device_info(device_path: str) -> DeviceInfo:
         raise DeviceNotFoundError(f"Error getting device info: {e}")
 
 
-def is_safe_device(device_info: DeviceInfo, max_size_gb: int = 512) -> tuple[bool, Optional[str]]:
+def is_safe_device(
+    device_info: DeviceInfo, max_size_gb: int = 512
+) -> tuple[bool, Optional[str]]:
     """Check if device is safe to access for recovery.
 
     Args:
@@ -163,7 +156,10 @@ def is_safe_device(device_info: DeviceInfo, max_size_gb: int = 512) -> tuple[boo
     """
     # Block disk0 and disk1 (typically internal disks)
     if device_info.device_number <= 1:
-        return False, f"Device {device_info.device_path} appears to be an internal disk (disk0/disk1)"
+        return (
+            False,
+            f"Device {device_info.device_path} appears to be an internal disk (disk0/disk1)",
+        )
 
     # Check if marked as internal
     if device_info.is_internal:
@@ -172,7 +168,10 @@ def is_safe_device(device_info: DeviceInfo, max_size_gb: int = 512) -> tuple[boo
     # Warn if device is very large (unlikely to be SD card)
     max_size_bytes = max_size_gb * 1024 * 1024 * 1024
     if device_info.size_bytes > max_size_bytes:
-        return False, f"Device {device_info.device_path} is larger than {max_size_gb}GB ({device_info.size_human})"
+        return (
+            False,
+            f"Device {device_info.device_path} is larger than {max_size_gb}GB ({device_info.size_human})",
+        )
 
     # Prefer removable devices
     if not device_info.is_removable:
@@ -196,10 +195,10 @@ def unmount_device(device_path: str) -> bool:
     try:
         logger.info(f"Unmounting {device_path}")
         result = subprocess.run(
-            ['diskutil', 'unmountDisk', device_path],
+            ["diskutil", "unmountDisk", device_path],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         logger.info(f"Successfully unmounted {device_path}")
         return True
@@ -223,10 +222,10 @@ def mount_device(device_path: str) -> bool:
     try:
         logger.info(f"Mounting {device_path}")
         result = subprocess.run(
-            ['diskutil', 'mountDisk', device_path],
+            ["diskutil", "mountDisk", device_path],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         logger.info(f"Successfully mounted {device_path}")
         return True
@@ -249,9 +248,9 @@ def parse_size(size_str: str) -> int:
         Size in bytes
     """
     # Remove parentheses and extract number and unit
-    size_str = size_str.replace('(', '').replace(')', '').strip()
+    size_str = size_str.replace("(", "").replace(")", "").strip()
 
-    match = re.search(r'([\d.]+)\s*([KMGTP]?B)', size_str, re.IGNORECASE)
+    match = re.search(r"([\d.]+)\s*([KMGTP]?B)", size_str, re.IGNORECASE)
     if not match:
         return 0
 
@@ -259,12 +258,12 @@ def parse_size(size_str: str) -> int:
     unit = match.group(2).upper()
 
     units = {
-        'B': 1,
-        'KB': 1024,
-        'MB': 1024 ** 2,
-        'GB': 1024 ** 3,
-        'TB': 1024 ** 4,
-        'PB': 1024 ** 5,
+        "B": 1,
+        "KB": 1024,
+        "MB": 1024**2,
+        "GB": 1024**3,
+        "TB": 1024**4,
+        "PB": 1024**5,
     }
 
     return int(number * units.get(unit, 1))
@@ -294,9 +293,11 @@ def format_device_info(device_info: DeviceInfo) -> str:
     if device_info.mount_point:
         lines.append(f"Mount Point: {device_info.mount_point}")
 
-    lines.extend([
-        f"Removable: {'Yes' if device_info.is_removable else 'No'}",
-        f"Internal: {'Yes' if device_info.is_internal else 'No'}",
-    ])
+    lines.extend(
+        [
+            f"Removable: {'Yes' if device_info.is_removable else 'No'}",
+            f"Internal: {'Yes' if device_info.is_internal else 'No'}",
+        ]
+    )
 
-    return '\n'.join(lines)
+    return "\n".join(lines)

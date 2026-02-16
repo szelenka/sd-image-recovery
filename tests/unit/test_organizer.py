@@ -13,8 +13,8 @@ def test_jpeg(temp_dir):
     """Create a test JPEG file."""
     img_path = temp_dir / "test.jpg"
     # Create larger image to avoid "suspicious" flag (size > 1KB)
-    img = Image.new('RGB', (640, 480), color='red')
-    img.save(img_path, 'JPEG', quality=95)
+    img = Image.new("RGB", (640, 480), color="red")
+    img.save(img_path, "JPEG", quality=95)
     return img_path
 
 
@@ -35,8 +35,7 @@ class TestRecoveryOrganizer:
         organizer = RecoveryOrganizer(temp_dir)
 
         recovered_files = organizer.organize(
-            source_files=[test_jpeg],
-            validate_files=True
+            source_files=[test_jpeg], validate_files=True
         )
 
         assert len(recovered_files) == 1
@@ -53,15 +52,14 @@ class TestRecoveryOrganizer:
         source_files = []
         for i in range(5):
             img_path = source_dir / f"test_{i}.jpg"
-            img = Image.new('RGB', (200, 150), color='blue')
-            img.save(img_path, 'JPEG')
+            img = Image.new("RGB", (200, 150), color="blue")
+            img.save(img_path, "JPEG")
             source_files.append(img_path)
 
         organizer = RecoveryOrganizer(temp_dir / "output")
 
         recovered_files = organizer.organize(
-            source_files=source_files,
-            validate_files=True
+            source_files=source_files, validate_files=True
         )
 
         assert len(recovered_files) == 5
@@ -75,8 +73,7 @@ class TestRecoveryOrganizer:
         organizer = RecoveryOrganizer(temp_dir)
 
         recovered_files = organizer.organize(
-            source_files=[test_jpeg],
-            validate_files=True
+            source_files=[test_jpeg], validate_files=True
         )
 
         manifest_path = organizer.metadata_dir / "manifest.json"
@@ -85,35 +82,33 @@ class TestRecoveryOrganizer:
         with open(manifest_path) as f:
             manifest = json.load(f)
 
-        assert manifest['total_files'] == 1
-        assert manifest['valid_files'] == 1
-        assert len(manifest['files']) == 1
+        assert manifest["total_files"] == 1
+        assert manifest["valid_files"] == 1
+        assert len(manifest["files"]) == 1
 
     def test_csv_generation(self, temp_dir, test_jpeg):
         organizer = RecoveryOrganizer(temp_dir)
 
         recovered_files = organizer.organize(
-            source_files=[test_jpeg],
-            validate_files=True
+            source_files=[test_jpeg], validate_files=True
         )
 
         csv_path = organizer.metadata_dir / "file_details.csv"
         assert csv_path.exists()
 
-        with open(csv_path, newline='') as f:
+        with open(csv_path, newline="") as f:
             reader = csv.reader(f)
             rows = list(reader)
 
         # Should have header + 1 data row
         assert len(rows) == 2
-        assert rows[0][0] == 'filename'  # Header
+        assert rows[0][0] == "filename"  # Header
 
     def test_summary_generation(self, temp_dir, test_jpeg):
         organizer = RecoveryOrganizer(temp_dir)
 
         recovered_files = organizer.organize(
-            source_files=[test_jpeg],
-            validate_files=True
+            source_files=[test_jpeg], validate_files=True
         )
 
         log_path = organizer.metadata_dir / "recovery_log.txt"
@@ -129,8 +124,7 @@ class TestRecoveryOrganizer:
         organizer = RecoveryOrganizer(temp_dir)
 
         recovered_files = organizer.organize(
-            source_files=[test_jpeg],
-            validate_files=True
+            source_files=[test_jpeg], validate_files=True
         )
 
         # Valid file should have symlink in valid directory
@@ -141,8 +135,7 @@ class TestRecoveryOrganizer:
         organizer = RecoveryOrganizer(temp_dir)
 
         recovered_files = organizer.organize(
-            source_files=[test_jpeg],
-            validate_files=False
+            source_files=[test_jpeg], validate_files=False
         )
 
         assert len(recovered_files) == 1
@@ -162,7 +155,7 @@ class TestRecoveredFile:
             is_suspicious=False,
             size_bytes=12345,
             width=1920,
-            height=1080
+            height=1080,
         )
 
         assert recovered.original_path == "/tmp/f0000001.jpg"

@@ -27,7 +27,7 @@ class ProgressTracker:
                 total=self.total,
                 desc=self.desc,
                 unit="files" if self.total else "it",
-                disable=None  # Auto-detect if output is terminal
+                disable=None,  # Auto-detect if output is terminal
             )
 
     def update(self, n: int = 1):
@@ -74,10 +74,10 @@ def print_status(message: str, status: str = "INFO"):
         status: Status level (INFO, SUCCESS, WARNING, ERROR)
     """
     colors = {
-        "INFO": "\033[94m",      # Blue
-        "SUCCESS": "\033[92m",   # Green
-        "WARNING": "\033[93m",   # Yellow
-        "ERROR": "\033[91m",     # Red
+        "INFO": "\033[94m",  # Blue
+        "SUCCESS": "\033[92m",  # Green
+        "WARNING": "\033[93m",  # Yellow
+        "ERROR": "\033[91m",  # Red
     }
     reset = "\033[0m"
 

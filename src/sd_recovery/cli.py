@@ -6,10 +6,14 @@ import click
 from pathlib import Path
 
 from . import __version__
-from .core.device import get_all_devices, get_device_info, format_device_info, is_safe_device
+from .core.device import (
+    get_all_devices,
+    get_device_info,
+    format_device_info,
+    is_safe_device,
+)
 from .core.recovery import recover
-from .core.photorec_wrapper import PhotoRecWrapper
-from .utils.errors import SDRecoveryError, PhotoRecNotFoundError
+from .utils.errors import SDRecoveryError
 from .utils.progress import print_status
 
 
@@ -23,17 +27,17 @@ def setup_logging(verbose: bool = False):
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler('sd_recovery.log'),
-            logging.StreamHandler() if verbose else logging.NullHandler()
-        ]
+            logging.FileHandler("sd_recovery.log"),
+            logging.StreamHandler() if verbose else logging.NullHandler(),
+        ],
     )
 
 
 @click.group()
 @click.version_option(version=__version__)
-@click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.pass_context
 def main(ctx, verbose):
     """SD Image Recovery Tool - Recover deleted images from SD cards on macOS.
@@ -42,7 +46,7 @@ def main(ctx, verbose):
     for recovering deleted JPEG images from SD cards and disk images.
     """
     ctx.ensure_object(dict)
-    ctx.obj['verbose'] = verbose
+    ctx.obj["verbose"] = verbose
     setup_logging(verbose)
 
 
@@ -103,27 +107,24 @@ def devices(ctx):
         sys.exit(1)
 
 
-@main.command('recover')
-@click.argument('device', type=str)
+@main.command("recover")
+@click.argument("device", type=str)
 @click.option(
-    '--output', '-o',
+    "--output",
+    "-o",
     type=click.Path(path_type=Path),
-    help='Output directory for recovered files (auto-generated if not specified)'
+    help="Output directory for recovered files (auto-generated if not specified)",
 )
 @click.option(
-    '--paranoid',
+    "--paranoid",
     is_flag=True,
-    help='Enable paranoid mode for thorough scanning (slower but finds more files)'
+    help="Enable paranoid mode for thorough scanning (slower but finds more files)",
 )
+@click.option("--no-validate", is_flag=True, help="Skip validation of recovered files")
 @click.option(
-    '--no-validate',
+    "--force",
     is_flag=True,
-    help='Skip validation of recovered files'
-)
-@click.option(
-    '--force',
-    is_flag=True,
-    help='Skip confirmation and safety checks (dangerous - use with caution)'
+    help="Skip confirmation and safety checks (dangerous - use with caution)",
 )
 @click.pass_context
 def recover_cmd(ctx, device, output, paranoid, no_validate, force):
@@ -150,24 +151,16 @@ def recover_cmd(ctx, device, output, paranoid, no_validate, force):
     The tool operates in READ-ONLY mode and will never modify or delete
     data on the source device.
     """
-    verbose = ctx.obj.get('verbose', False)
+    verbose = ctx.obj.get("verbose", False)
 
     try:
         # Check if PhotoRec is installed
-        try:
-            wrapper = PhotoRecWrapper()
-            version = wrapper.check_version()
-            if verbose:
-                print_status(f"Using PhotoRec version {version}", "INFO")
-        except PhotoRecNotFoundError as e:
-            print_status(str(e), "ERROR")
-            sys.exit(1)
+        # PhotoRec version check removed; handled by recovery workflow
 
         # Show warning for force mode
         if force:
             print_status(
-                "WARNING: Force mode enabled - skipping safety checks!",
-                "WARNING"
+                "WARNING: Force mode enabled - skipping safety checks!", "WARNING"
             )
 
         # Run recovery
@@ -177,7 +170,7 @@ def recover_cmd(ctx, device, output, paranoid, no_validate, force):
             output_dir=str(output) if output else None,
             paranoid=paranoid,
             validate=validate,
-            force=force
+            force=force,
         )
 
         if success:
@@ -197,27 +190,8 @@ def recover_cmd(ctx, device, output, paranoid, no_validate, force):
         print_status(f"Unexpected error: {e}", "ERROR")
         if verbose:
             import traceback
+
             traceback.print_exc()
-        sys.exit(1)
-
-
-@main.command()
-def check():
-    """Check if all dependencies are installed.
-
-    Verifies that PhotoRec is installed and accessible.
-    """
-    try:
-        wrapper = PhotoRecWrapper()
-        version = wrapper.check_version()
-        print_status(f"PhotoRec {version} is installed", "SUCCESS")
-        print_status("All dependencies are ready", "SUCCESS")
-        sys.exit(0)
-
-    except PhotoRecNotFoundError as e:
-        print_status(str(e), "ERROR")
-        print_status("\nTo install PhotoRec:", "INFO")
-        print("  brew install testdisk")
         sys.exit(1)
 
     except Exception as e:
@@ -225,5 +199,42 @@ def check():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+@main.command("group")
+@click.argument("root_dir", type=click.Path(exists=True, file_okay=False))
+@click.option(
+    "--grouped-dir", type=click.Path(), help="Directory to move grouped images into"
+)
+@click.option(
+    "--multi",
+    is_flag=True,
+    help="Scan all peer recovered* folders in the parent directory",
+)
+@click.option("--rename-prefix", type=str, help="Prefix for renaming files, e.g., PICT")
+@click.option(
+    "--rename-digits",
+    type=int,
+    default=4,
+    show_default=True,
+    help="Number of digits for sequential filenames (e.g., 4 for PICT0001.jpg)",
+)
+def group_images(root_dir, grouped_dir, multi, rename_prefix, rename_digits):
+    """Group images by resolution into folders under GROUPED_DIR, optionally renaming files."""
+    from .utils.image_filter import group_images_by_resolution
+
+    if not grouped_dir:
+        print_status("You must specify --grouped-dir", "ERROR")
+        sys.exit(1)
+    moved = group_images_by_resolution(
+        [root_dir],
+        grouped_dir,
+        multi=multi,
+        rename_prefix=rename_prefix,
+        rename_digits=rename_digits,
+    )
+    print_status(
+        f"Moved {moved} images into grouped folders under {grouped_dir}.", "SUCCESS"
+    )
+
+
+if __name__ == "__main__":
     main()

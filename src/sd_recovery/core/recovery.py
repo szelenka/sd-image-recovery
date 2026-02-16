@@ -1,10 +1,11 @@
 """Main recovery orchestration."""
 
 import logging
-import tempfile
+import subprocess
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
+import os
 
 from .device import (
     get_device_info,
@@ -14,13 +15,9 @@ from .device import (
     format_device_info,
     DeviceInfo,
 )
-from .photorec_wrapper import PhotoRecWrapper, PhotoRecResult
 from .organizer import RecoveryOrganizer
 
-from ..utils.errors import (
-    SDRecoveryError,
-    UnsafeDeviceError,
-)
+from ..utils.errors import SDRecoveryError, UnsafeDeviceError
 from ..utils.progress import print_status
 from ..utils.validation import validate_device_path
 
@@ -35,7 +32,7 @@ class RecoverySession:
         device_path: str,
         output_dir: Optional[Path] = None,
         paranoid: bool = False,
-        validate: bool = True
+        validate: bool = True,
     ):
         """Initialize recovery session.
 
@@ -56,15 +53,21 @@ class RecoverySession:
 
         self.output_dir = Path(output_dir)
         self.device_info: Optional[DeviceInfo] = None
-        self.photorec_wrapper = PhotoRecWrapper()
         self.was_mounted = False
         self.temp_dir: Optional[Path] = None
 
-    def run(self, skip_confirmation: bool = False) -> bool:
+    def run(
+        self,
+        skip_confirmation: bool = False,
+        rename_prefix: str = "PICT",
+        rename_digits: int = 4,
+    ) -> bool:
         """Run the complete recovery workflow.
 
         Args:
             skip_confirmation: Skip user confirmation (dangerous)
+            rename_prefix: Prefix for renaming grouped images
+            rename_digits: Number of digits for sequential filenames
 
         Returns:
             True if successful
@@ -92,17 +95,58 @@ class RecoverySession:
             print_status("Step 4: Preparing device", "INFO")
             self._prepare_device()
 
-            # Step 5: Run PhotoRec
-            print_status("Step 5: Running PhotoRec recovery", "INFO")
-            photorec_result = self._run_photorec()
+            # Step 5: Run PhotoRec interactively
+            print_status("Step 5: Launching PhotoRec (interactive)", "INFO")
+            self.run_photorec_interactive()
 
-            # Step 6: Organize output
-            print_status("Step 6: Organizing recovered files", "INFO")
-            self._organize_output(photorec_result)
+            # Step 6: Group images by resolution after recovery
+            print_status("Step 6: Grouping images by resolution", "INFO")
+            from ..utils.image_filter import group_images_by_resolution
+            import shutil
 
-            # Step 7: Cleanup
-            print_status("Step 7: Cleaning up", "INFO")
-            self._cleanup()
+            grouped_dir = self.output_dir.parent / "grouped"
+            moved = group_images_by_resolution(
+                [str(self.output_dir)],
+                grouped_dir=str(grouped_dir),
+                multi=True,
+                rename_prefix=rename_prefix,
+                rename_digits=rename_digits,
+            )
+            print_status(
+                f"Moved {moved} images into grouped folders under {grouped_dir}",
+                "SUCCESS",
+            )
+
+            # Failsafe: Move any files not grouped to a 'failed_to_group' folder inside grouped_dir
+            failed_dir = grouped_dir / "failed_to_group"
+            files_left = []
+            for dirpath, _, filenames in os.walk(self.output_dir):
+                for fname in filenames:
+                    files_left.append(Path(dirpath) / fname)
+            if files_left:
+                failed_dir.mkdir(parents=True, exist_ok=True)
+                for f in files_left:
+                    try:
+                        shutil.move(str(f), str(failed_dir / f.name))
+                    except Exception as e:
+                        print_status(
+                            f"Could not move {f} to failsafe folder: {e}", "WARNING"
+                        )
+                print_status(
+                    f"{len(files_left)} files could not be grouped and were moved to {failed_dir}",
+                    "WARNING",
+                )
+
+            # Replace output_dir with grouped_dir
+            try:
+                if self.output_dir.exists():
+                    shutil.rmtree(self.output_dir)
+                grouped_dir.rename(self.output_dir)
+                print_status(f"Grouped images are now in {self.output_dir}", "SUCCESS")
+            except Exception as e:
+                print_status(
+                    f"Failed to move grouped images to output directory: {e}", "ERROR"
+                )
 
             print_status(f"Recovery complete! Output: {self.output_dir}", "SUCCESS")
             return True
@@ -123,14 +167,16 @@ class RecoverySession:
         device_path_obj = validate_device_path(self.device_path)
 
         # Check if it's a disk image file
-        if device_path_obj.suffix in ('.img', '.dmg', '.iso'):
+        if device_path_obj.suffix in (".img", ".dmg", ".iso"):
             print_status(f"Using disk image: {self.device_path}", "INFO")
             # For disk images, we don't need device info
             return
 
         # Get device information
         self.device_info = get_device_info(self.device_path)
-        print_status(f"Device detected:\n{format_device_info(self.device_info)}", "INFO")
+        print_status(
+            f"Device detected:\n{format_device_info(self.device_info)}", "INFO"
+        )
 
     def _check_safety(self):
         """Run safety checks on device."""
@@ -177,13 +223,15 @@ class RecoverySession:
         print("  - Save recovered files to the output directory")
 
         if self.device_info and self.device_info.mount_point:
-            print(f"\nWarning: Device is currently mounted at {self.device_info.mount_point}")
+            print(
+                f"\nWarning: Device is currently mounted at {self.device_info.mount_point}"
+            )
             print("It will be unmounted during recovery and remounted afterward.")
 
         print("\n" + "=" * 60)
 
         response = input("\nProceed with recovery? [y/N]: ").strip().lower()
-        return response in ('y', 'yes')
+        return response in ("y", "yes")
 
     def _prepare_device(self):
         """Prepare device for recovery."""
@@ -199,65 +247,6 @@ class RecoverySession:
         else:
             self.was_mounted = False
 
-    def _run_photorec(self) -> PhotoRecResult:
-        """Run PhotoRec recovery.
-
-        Returns:
-            PhotoRecResult object
-        """
-        # Create temporary directory for PhotoRec output
-        self.temp_dir = Path(tempfile.mkdtemp(prefix="photorec_"))
-        logger.info(f"PhotoRec temporary directory: {self.temp_dir}")
-
-        # Progress callback
-        def progress_callback(line: str):
-            # PhotoRec outputs progress lines we can display
-            if "Pass" in line or "%" in line:
-                print(f"  {line}")
-
-        # Use raw device path if available (faster)
-        device_to_scan = self.device_path
-        if self.device_info and self.device_info.raw_device_path:
-            device_to_scan = self.device_info.raw_device_path
-            print_status(f"Using raw device: {device_to_scan}", "INFO")
-
-        # Run PhotoRec
-        result = self.photorec_wrapper.execute(
-            device_path=device_to_scan,
-            output_dir=self.temp_dir,
-            paranoid=self.paranoid,
-            file_types=['jpg'],
-            progress_callback=progress_callback
-        )
-
-        print_status(f"PhotoRec recovered {result.files_recovered} files", "SUCCESS")
-        return result
-
-    def _organize_output(self, photorec_result: PhotoRecResult):
-        """Organize PhotoRec output.
-
-        Args:
-            photorec_result: Result from PhotoRec execution
-        """
-        # Create organizer
-        organizer = RecoveryOrganizer(self.output_dir)
-
-        # Organize files
-        recovered_files = organizer.organize(
-            source_files=photorec_result.recovered_files,
-            validate_files=self.validate
-        )
-
-        # Print summary
-        valid_count = sum(1 for f in recovered_files if f.is_valid)
-        suspicious_count = sum(1 for f in recovered_files if f.is_suspicious)
-
-        print_status(
-            f"Organized {len(recovered_files)} files "
-            f"({valid_count} valid, {suspicious_count} suspicious)",
-            "SUCCESS"
-        )
-
     def _cleanup(self):
         """Cleanup after recovery."""
         # Remount device if it was mounted before
@@ -272,10 +261,18 @@ class RecoverySession:
         if self.temp_dir and self.temp_dir.exists():
             try:
                 import shutil
+
                 shutil.rmtree(self.temp_dir)
                 logger.info(f"Cleaned up temporary directory: {self.temp_dir}")
             except Exception as e:
                 logger.warning(f"Could not remove temporary directory: {e}")
+
+    def run_photorec_interactive(self):
+        """Run PhotoRec in interactive mode."""
+        print("Launching PhotoRec for interactive recovery...")
+        print("Please select the correct partition and output directory when prompted.")
+        cmd = ["sudo", "photorec", "/d", str(self.output_dir), self.device_path]
+        subprocess.run(cmd)
 
 
 def recover(
@@ -283,7 +280,7 @@ def recover(
     output_dir: Optional[str] = None,
     paranoid: bool = False,
     validate: bool = True,
-    force: bool = False
+    force: bool = False,
 ) -> bool:
     """Recover deleted images from device.
 
@@ -303,7 +300,7 @@ def recover(
         device_path=device_path,
         output_dir=output_path,
         paranoid=paranoid,
-        validate=validate
+        validate=validate,
     )
 
     return session.run(skip_confirmation=force)

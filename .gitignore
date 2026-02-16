@@ -53,3 +53,8 @@ tests/fixtures/checksums_*.txt
 
 # macOS
 .DS_Store
+
+recovered*/
+grouped*/
+photorec.*
+.ruff_cache/

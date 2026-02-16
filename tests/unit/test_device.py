@@ -48,7 +48,7 @@ class TestIsSafeDevice:
             device_number=0,
             is_internal=True,
             is_removable=False,
-            volume_name=None
+            volume_name=None,
         )
         is_safe, reason = is_safe_device(device)
         assert not is_safe
@@ -65,7 +65,7 @@ class TestIsSafeDevice:
             device_number=1,
             is_internal=True,
             is_removable=False,
-            volume_name=None
+            volume_name=None,
         )
         is_safe, reason = is_safe_device(device)
         assert not is_safe
@@ -81,7 +81,7 @@ class TestIsSafeDevice:
             device_number=2,
             is_internal=True,  # Marked as internal
             is_removable=False,
-            volume_name=None
+            volume_name=None,
         )
         is_safe, reason = is_safe_device(device)
         assert not is_safe
@@ -98,7 +98,7 @@ class TestIsSafeDevice:
             device_number=2,
             is_internal=False,
             is_removable=True,
-            volume_name=None
+            volume_name=None,
         )
         is_safe, reason = is_safe_device(device)
         assert not is_safe
@@ -115,7 +115,7 @@ class TestIsSafeDevice:
             device_number=2,
             is_internal=False,
             is_removable=False,  # Not removable
-            volume_name=None
+            volume_name=None,
         )
         is_safe, reason = is_safe_device(device)
         assert not is_safe
@@ -132,14 +132,14 @@ class TestIsSafeDevice:
             device_number=2,
             is_internal=False,
             is_removable=True,
-            volume_name="SD_CARD"
+            volume_name="SD_CARD",
         )
         is_safe, reason = is_safe_device(device)
         assert is_safe
         assert reason is None
 
 
-@patch('sd_recovery.core.device.subprocess.run')
+@patch("sd_recovery.core.device.subprocess.run")
 class TestGetDeviceInfo:
     """Test device information retrieval."""
 
@@ -156,7 +156,7 @@ class TestGetDeviceInfo:
    File System Personality:  MS-DOS FAT32
    Volume Name:              SD_CARD
             """,
-            returncode=0
+            returncode=0,
         )
 
         device_info = get_device_info("/dev/disk2")
@@ -170,7 +170,9 @@ class TestGetDeviceInfo:
         assert device_info.volume_name == "SD_CARD"
 
     def test_get_device_info_not_found(self, mock_run):
-        mock_run.side_effect = subprocess.CalledProcessError(1, 'diskutil', stderr="Device not found")
+        mock_run.side_effect = subprocess.CalledProcessError(
+            1, "diskutil", stderr="Device not found"
+        )
 
         with pytest.raises(DeviceNotFoundError):
             get_device_info("/dev/disk99")

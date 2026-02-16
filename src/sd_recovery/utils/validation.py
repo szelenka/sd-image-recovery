@@ -23,36 +23,36 @@ def validate_jpeg(file_path: Path) -> Tuple[bool, Optional[Dict]]:
     try:
         with Image.open(file_path) as img:
             # Verify it's actually a JPEG
-            if img.format not in ('JPEG', 'JPG'):
+            if img.format not in ("JPEG", "JPG"):
                 return False, None
 
             # Extract basic metadata
             metadata = {
-                'width': img.width,
-                'height': img.height,
-                'format': img.format,
-                'mode': img.mode,
-                'size_bytes': file_path.stat().st_size,
+                "width": img.width,
+                "height": img.height,
+                "format": img.format,
+                "mode": img.mode,
+                "size_bytes": file_path.stat().st_size,
             }
 
             # Try to extract EXIF data
             try:
                 exif = img.getexif()
                 if exif:
-                    metadata['has_exif'] = True
+                    metadata["has_exif"] = True
                     # Add some common EXIF tags if present
                     # 0x0132: DateTime, 0x010F: Make, 0x0110: Model
                     if 0x0132 in exif:
-                        metadata['datetime'] = str(exif[0x0132])
+                        metadata["datetime"] = str(exif[0x0132])
                     if 0x010F in exif:
-                        metadata['camera_make'] = str(exif[0x010F])
+                        metadata["camera_make"] = str(exif[0x010F])
                     if 0x0110 in exif:
-                        metadata['camera_model'] = str(exif[0x0110])
+                        metadata["camera_model"] = str(exif[0x0110])
                 else:
-                    metadata['has_exif'] = False
+                    metadata["has_exif"] = False
             except Exception as e:
                 logger.debug(f"Could not extract EXIF from {file_path}: {e}")
-                metadata['has_exif'] = False
+                metadata["has_exif"] = False
 
             # Verify image can be loaded (basic corruption check)
             img.verify()
@@ -80,16 +80,16 @@ def is_suspicious_jpeg(metadata: Optional[Dict]) -> bool:
         return True
 
     # Check for unusually small images (likely corrupted)
-    if metadata.get('width', 0) < 10 or metadata.get('height', 0) < 10:
+    if metadata.get("width", 0) < 10 or metadata.get("height", 0) < 10:
         return True
 
     # Check for unusually small file size (less than 1KB)
-    if metadata.get('size_bytes', 0) < 1024:
+    if metadata.get("size_bytes", 0) < 1024:
         return True
 
     # Check for unusual aspect ratios (possible corruption)
-    width = metadata.get('width', 1)
-    height = metadata.get('height', 1)
+    width = metadata.get("width", 1)
+    height = metadata.get("height", 1)
     aspect_ratio = max(width, height) / min(width, height)
     if aspect_ratio > 10:  # Extremely tall or wide
         return True
@@ -112,11 +112,11 @@ def validate_device_path(device_path: str) -> Path:
     path = Path(device_path)
 
     # Check if it's a device path
-    if not str(path).startswith('/dev/'):
+    if not str(path).startswith("/dev/"):
         raise ValidationError(f"Not a valid device path: {device_path}")
 
     # For disk images, allow regular files
-    if path.suffix in ('.img', '.dmg', '.iso'):
+    if path.suffix in (".img", ".dmg", ".iso"):
         if not path.exists():
             raise ValidationError(f"Disk image not found: {device_path}")
         return path
@@ -137,7 +137,7 @@ def format_size(size_bytes: int) -> str:
     Returns:
         Formatted string (e.g., "1.5 GB")
     """
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
         if size_bytes < 1024.0:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
